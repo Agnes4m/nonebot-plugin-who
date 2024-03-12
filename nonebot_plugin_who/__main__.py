@@ -7,20 +7,17 @@ import pygtrie
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
 from nonebot.adapters import Event
-from gsuid_core.sv import SV
-from gsuid_core.bot import Bot
+
 from async_timeout import timeout
-from gsuid_core.models import Event
+
 from PIL import Image, ImageDraw, ImageFont
-from gsuid_core.message_models import Button
-from gsuid_core.utils.image.convert import convert_img
-from gsuid_core.segment import MessageSegment
+
 from . import poke_data
-from ..utils.convert import DailyAmountLimiter
-from ..utils.dbbase.GameCounter import GAME_DB
-from ..utils.dbbase.ScoreCounter import SCORE_DB
-from ..utils.dbbase.PokeCounter import PokeCounter
-from ..utils.resource.RESOURCE_PATH import CHAR_ICON_PATH
+from .utils.convert import DailyAmountLimiter
+from .utils.dbbase.GameCounter import GAME_DB
+from .utils.dbbase.ScoreCounter import SCORE_DB
+from .utils.dbbase.PokeCounter import PokeCounter
+from .utils.resource.RESOURCE_PATH import CHAR_ICON_PATH
 
 PIC_SIDE_LENGTH = 25
 LH_SIDE_LENGTH = 75
@@ -30,8 +27,6 @@ daily_whois_limiter = DailyAmountLimiter("whois", WHOIS_NUM, 0)
 FILE_PATH = path.dirname(__file__)
 FONTS_PATH = path.join(FILE_PATH, "font")
 FONTS_PATH = path.join(FONTS_PATH, "sakura.ttf")
-
-sv_pokemon_whois = SV("我是谁", priority=5)
 
 
 class WinnerJudger:
@@ -138,21 +133,21 @@ who_is = on_command("我是谁", aliases={"whois"}, priority=5, block=True)
 
 
 @who_is.handle()
-async def pokemon_whois(ev: Event):
-    if winner_judger.get_on_off_status(ev.group_id):
-        await bot.send("此轮游戏还没结束，请勿重复使用指令")
+async def pokemon_whois(ev: Event, matcher: Matcher):
+    if winner_judger.get_on_off_status(ev.get_session_id()):
+        await matcher.send("此轮游戏还没结束，请勿重复使用指令")
         return
-    winner_judger.turn_on(ev.group_id)
+    winner_judger.turn_on(ev.get_session_id())
     chara_id_list = list(poke_data.CHARA_NAME.keys())
     poke_list = poke_data.CHARA_NAME
     random.shuffle(chara_id_list)
-    winner_judger.set_correct_chara_id(ev.group_id, chara_id_list[0])
+    winner_judger.set_correct_chara_id(ev.get_session_id(), chara_id_list[0])
     # print(chara_id_list[0])
 
     name = poke_list[chara_id_list[0]][0]
     enname = poke_list[chara_id_list[0]][1]
     win_mes = await get_win_pic(name, enname)
-    winner_judger.set_correct_win_pic(ev.group_id, win_mes)
+    winner_judger.set_correct_win_pic(ev.get_session_id(), win_mes)
     print(name)
     im = Image.new("RGB", (640, 464), (255, 255, 255))
     base_img = path.join(FILE_PATH, "whois_bg.jpg")
@@ -239,8 +234,9 @@ async def pokemon_whois(ev: Event):
                     # await bot.send(f'你说的是 {resp.text} 吧？')
                     if (
                         cid != 9999
-                        and cid == winner_judger.get_correct_chara_id(ev.group_id)
-                        and winner_judger.get_winner(ev.group_id) == ""
+                        and cid
+                        == winner_judger.get_correct_chara_id(ev.get_session_id())
+                        and winner_judger.get_winner(ev.get_session_id()) == ""
                     ):
                         GAME = GAME_DB()
                         win_num = GAME.update_game_num(uid, "whois")
@@ -251,9 +247,9 @@ async def pokemon_whois(ev: Event):
                             SCORE.update_score(uid, 1000)
                             daily_whois_limiter.increase(uid)
                             mesg = "获得1000金币\n"
-                        winner_judger.record_winner(ev.group_id, ev.user_id)
+                        winner_judger.record_winner(ev.get_session_id(), ev.user_id)
                         win_mes = winner_judger.get_correct_win_pic(gid)
-                        winner_judger.turn_off(ev.group_id)
+                        winner_judger.turn_off(ev.get_session_id())
                         POKE = PokeCounter()
                         mapinfo = POKE._get_map_now(uid)
                         myname = mapinfo[2]
@@ -271,10 +267,10 @@ async def pokemon_whois(ev: Event):
                         return
     except asyncio.TimeoutError:
         pass
-    if winner_judger.get_winner(ev.group_id) != "":
-        winner_judger.turn_off(ev.group_id)
+    if winner_judger.get_winner(ev.get_session_id()) != "":
+        winner_judger.turn_off(ev.get_session_id())
         return
-    winner_judger.turn_off(ev.group_id)
+    winner_judger.turn_off(ev.get_session_id())
     mes = f"很遗憾，没有人答对~\n正确答案是:{name}"
     mesg_c = []
     mesg_c.append(MessageSegment.text(mes))
@@ -282,9 +278,12 @@ async def pokemon_whois(ev: Event):
     await bot.send_option(mesg_c, buttons_d)
 
 
-@sv_pokemon_whois.on_fullmatch("重置我是谁")
+re_who_is = on_command("重置我是谁", aliases={"rewho"}, priority=5, block=True)
+
+
+@re_who_is.handle("")
 async def cz_pokemon_whois(bot: Bot, ev: Event):
-    winner_judger.turn_off(ev.group_id)
+    winner_judger.turn_off(ev.get_session_id())
     buttons = [
         Button("✅我是谁", "我是谁"),
     ]
