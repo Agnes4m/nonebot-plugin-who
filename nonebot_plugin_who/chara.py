@@ -4,10 +4,9 @@ import importlib
 import pygtrie
 from PIL import Image
 from fuzzywuzzy import process
-
+from nonebot.log import logger
 from . import poke_data
 
-logger = log.new_logger('chara', hoshino.config.DEBUG)
 UNKNOWN = 1000
 UnavailableChara = {
     1067,  # 穗希
@@ -18,13 +17,11 @@ UnavailableChara = {
 }
 
 try:
-    gadget_equip = R.img('priconne/gadget/equip.png').open()
-    gadget_star = R.img('priconne/gadget/star.png').open()
-    gadget_star_dis = R.img('priconne/gadget/star_disabled.png').open()
-    gadget_star_pink = R.img('priconne/gadget/star_pink.png').open()
-    unknown_chara_icon = R.img(
-        f'priconne/unit/icon_unit_{UNKNOWN}31.png'
-    ).open()
+    gadget_equip = Image.open("priconne/gadget/equip.png")
+    gadget_star = Image.open("priconne/gadget/star.png").open()
+    gadget_star_dis = Image.open("priconne/gadget/star_disabled.png").open()
+    gadget_star_pink = Image.open("priconne/gadget/star_pink.png").open()
+    unknown_chara_icon = Image.open(f"priconne/unit/icon_unit_{UNKNOWN}31.png").open()
 except Exception as e:
     logger.exception(e)
 
@@ -44,7 +41,7 @@ class Roster:
                     self._roster[n] = idx
                 else:
                     logger.warning(
-                        f'priconne.chara.Roster: 出现重名{n}于id{idx}与id{self._roster[n]}'
+                        f"priconne.chara.Roster: 出现重名{n}于id{idx}与id{self._roster[n]}"
                     )
         self._all_name_list = self._roster.keys()
 
@@ -72,7 +69,7 @@ class Roster:
             else:
                 team.append(item.value)
                 namestr = namestr[len(item.key) :].lstrip()
-        return team, ''.join(unknown)
+        return team, "".join(unknown)
 
 
 roster = Roster()
@@ -105,7 +102,7 @@ def is_npc(id_):
 
 def gen_team_pic(team, size=64, star_slot_verbose=True):
     num = len(team)
-    des = Image.new('RGBA', (num * size, size), (255, 255, 255, 255))
+    des = Image.new("RGBA", (num * size, size), (255, 255, 255, 255))
     for i, chara in enumerate(team):
         src = chara.render_icon(size, star_slot_verbose)
         des.paste(src, (i * size, 0), src)
@@ -132,34 +129,28 @@ class Chara:
 
     @property
     def icon(self):
-        star = '3' if 1 <= self.star <= 5 else '6'
-        res = R.img(f'priconne/unit/icon_unit_{self.id}{star}1.png')
+        star = "3" if 1 <= self.star <= 5 else "6"
+        res = Image.open(f"priconne/unit/icon_unit_{self.id}{star}1.png")
         if not res.exist:
-            res = R.img(f'priconne/unit/icon_unit_{self.id}31.png')
+            res = Image.open(f"priconne/unit/icon_unit_{self.id}31.png")
         if not res.exist:
-            res = R.img(f'priconne/unit/icon_unit_{self.id}11.png')
+            res = Image.open(f"priconne/unit/icon_unit_{self.id}11.png")
         if not res.exist:  # FIXME: 不方便改成异步请求
-            res = R.img(f'priconne/unit/icon_unit_{self.id}{star}1.png')
+            res = Image.open(f"priconne/unit/icon_unit_{self.id}{star}1.png")
         if not res.exist:
-            res = R.img(f'priconne/unit/icon_unit_{self.id}31.png')
+            res = Image.open(f"priconne/unit/icon_unit_{self.id}31.png")
         if not res.exist:
-            res = R.img(f'priconne/unit/icon_unit_{self.id}11.png')
+            res = Image.open(f"priconne/unit/icon_unit_{self.id}11.png")
         if not res.exist:
-            res = R.img(f'priconne/unit/icon_unit_{UNKNOWN}31.png')
+            res = Image.open(f"priconne/unit/icon_unit_{UNKNOWN}31.png")
         return res
 
     def render_icon(self, size, star_slot_verbose=True) -> Image:
         try:
-            pic = (
-                self.icon.open()
-                .convert('RGBA')
-                .resize((size, size), Image.LANCZOS)
-            )
+            pic = self.icon.open().convert("RGBA").resize((size, size), Image.LANCZOS)
         except FileNotFoundError:
-            logger.error(f'File not found: {self.icon.path}')
-            pic = unknown_chara_icon.convert('RGBA').resize(
-                (size, size), Image.LANCZOS
-            )
+            logger.error(f"File not found: {self.icon.path}")
+            pic = unknown_chara_icon.convert("RGBA").resize((size, size), Image.LANCZOS)
 
         l = size // 6
         star_lap = round(l * 0.15)
@@ -182,11 +173,7 @@ class Chara:
                     pic.paste(s, (a, b, a + l_c, b + l_c), s)
                 lstar = int(starnum - cstar * 5)
                 for i in range(lstar):
-                    a = (
-                        cstar * (l_c - star_lap)
-                        + i * (l - star_lap)
-                        + margin_x
-                    )
+                    a = cstar * (l_c - star_lap) + i * (l - star_lap) + margin_x
                     b = size - l - margin_y
                     s = gadget_star
                     s = s.resize((l, l), Image.LANCZOS)

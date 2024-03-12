@@ -1,17 +1,20 @@
 import random
 import asyncio
 import importlib
+import io
+from pathlib import Path
 from os import path
 from nonebot import on_command
 import pygtrie
 from nonebot.matcher import Matcher
-from nonebot.params import CommandArg
-from nonebot.adapters import Event
-
+from nonebot.params import ArgPlainText
+from nonebot.adapters import Event, Bot
+from nonebot.typing import T_State
 from async_timeout import timeout
 
 from PIL import Image, ImageDraw, ImageFont
-
+from nonebot_plugin_saa import MessageFactory
+from nonebot_plugin_saa import Image as saaImage
 from . import poke_data
 from .utils.convert import DailyAmountLimiter
 from .utils.dbbase.GameCounter import GAME_DB
@@ -24,9 +27,9 @@ LH_SIDE_LENGTH = 75
 ONE_TURN_TIME = 20
 WHOIS_NUM = 6
 daily_whois_limiter = DailyAmountLimiter("whois", WHOIS_NUM, 0)
-FILE_PATH = path.dirname(__file__)
-FONTS_PATH = path.join(FILE_PATH, "font")
-FONTS_PATH = path.join(FONTS_PATH, "sakura.ttf")
+FILE_PATH = Path(__file__).parent
+FONTS_PATH = Path(FILE_PATH / "font")
+FONTS_PATH = Path(FONTS_PATH / "sakura.ttf")
 
 
 class WinnerJudger:
@@ -133,7 +136,7 @@ who_is = on_command("我是谁", aliases={"whois"}, priority=5, block=True)
 
 
 @who_is.handle()
-async def pokemon_whois(ev: Event, matcher: Matcher):
+async def pokemon_whois(ev: Event, matcher: Matcher, state: T_State):
     if winner_judger.get_on_off_status(ev.get_session_id()):
         await matcher.send("此轮游戏还没结束，请勿重复使用指令")
         return
@@ -149,6 +152,7 @@ async def pokemon_whois(ev: Event, matcher: Matcher):
     win_mes = await get_win_pic(name, enname)
     winner_judger.set_correct_win_pic(ev.get_session_id(), win_mes)
     print(name)
+    state["name"] = name
     im = Image.new("RGB", (640, 464), (255, 255, 255))
     base_img = path.join(FILE_PATH, "whois_bg.jpg")
     dtimg = Image.open(base_img)
@@ -209,23 +213,25 @@ async def pokemon_whois(ev: Event, matcher: Matcher):
     # base64_str = 'base64://' + base64.b64encode(output.getvalue()).decode()
     mesg_a = []
     mes = f"猜猜我是谁，({ONE_TURN_TIME}s后公布答案)"
-    mesg_a.append(MessageSegment.text(mes))
+    mesg_a.append(mes)
     # await bot.send(mes)
     # print(img_send)
     # await bot.send(img)
-    mesg_a.append(MessageSegment.image(img))
-    buttons_d = [
-        Button("✅再来一局", "我是谁", action=1),
-        Button("📖查看图鉴", f"精灵图鉴{name}", action=1),
-    ]
-    buttons_a = [
-        Button("猜一下", ""),
-    ]
-    await bot.send_option(mesg_a, buttons_a)
+    mesg_a.append(saaImage(img))
+    await MessageFactory(mesg_a).send()
+
+
+@who_is.got("arg")
+async def _(
+    matcher: Matcher,
+    ev: Event,
+    state: T_State,
+    resp: str = ArgPlainText(),
+):
+    name: str = state["name"]
     try:
         async with timeout(ONE_TURN_TIME):
             while True:
-                resp = await bot.receive_mutiply_resp()
                 if resp is not None:
                     s = resp.text.strip()
                     gid = resp.group_id
@@ -256,14 +262,11 @@ async def pokemon_whois(ev: Event, matcher: Matcher):
                         myname = str(myname)[:10]
                         mes = f"{myname}猜对了，真厉害！\n{mesg}TA已经猜对{win_num}次了\n正确答案是:{name}"
                         chongsheng_num = await POKE.get_chongsheng_num(uid, 150)
-                        if chongsheng_num >= 999:
-                            await POKE._add_pokemon_egg(uid, 150, 1)
-                            mes += f"\n{myname}获得了超梦精灵蛋x1"
-                            await POKE._new_chongsheng_num(uid, 150)
+
                         await POKE.update_chongsheng(uid, 150, 1)
-                        mesg_d.append(MessageSegment.text(mes))
-                        mesg_d.append(MessageSegment.image(win_mes))
-                        await bot.send_option(mesg_d, buttons_d)
+                        mesg_d.append(mes)
+                        mesg_d.append(saaImage(win_mes))
+                        await MessageFactory(mesg_d).send()
                         return
     except asyncio.TimeoutError:
         pass
@@ -273,18 +276,21 @@ async def pokemon_whois(ev: Event, matcher: Matcher):
     winner_judger.turn_off(ev.get_session_id())
     mes = f"很遗憾，没有人答对~\n正确答案是:{name}"
     mesg_c = []
-    mesg_c.append(MessageSegment.text(mes))
-    mesg_c.append(MessageSegment.image(win_mes))
-    await bot.send_option(mesg_c, buttons_d)
+    mesg_c.append(mes)
+    mesg_c.append(saaImage(win_mes))
+    await MessageFactory(mesg_c).send()
 
 
 re_who_is = on_command("重置我是谁", aliases={"rewho"}, priority=5, block=True)
 
 
 @re_who_is.handle("")
-async def cz_pokemon_whois(bot: Bot, ev: Event):
+async def cz_pokemon_whois(matcher: Matcher, ev: Event):
     winner_judger.turn_off(ev.get_session_id())
-    buttons = [
-        Button("✅我是谁", "我是谁"),
-    ]
-    await bot.send_option("重置成功，请重新发送我是谁开始新一轮游戏", buttons)
+    await matcher.send("重置成功，请重新发送我是谁开始新一轮游戏")
+
+
+async def convert_img(im: Image.Image) -> io.BytesIO:
+    image_data = io.BytesIO()
+    im.save(image_data, format="JPEG")
+    return image_data
