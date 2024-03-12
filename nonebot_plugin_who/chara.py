@@ -152,9 +152,9 @@ class Chara:
             logger.error(f"File not found: {self.icon.path}")
             pic = unknown_chara_icon.convert("RGBA").resize((size, size), Image.LANCZOS)
 
-        l = size // 6
-        star_lap = round(l * 0.15)
-        margin_x = (size - 6 * l) // 2
+        length = size // 6
+        star_lap = round(length * 0.15)
+        margin_x = (size - 6 * length) // 2
         margin_y = round(size * 0.05)
 
         l_c = size // 5
@@ -173,28 +173,28 @@ class Chara:
                     pic.paste(s, (a, b, a + l_c, b + l_c), s)
                 lstar = int(starnum - cstar * 5)
                 for i in range(lstar):
-                    a = cstar * (l_c - star_lap) + i * (l - star_lap) + margin_x
-                    b = size - l - margin_y
+                    a = cstar * (l_c - star_lap) + i * (length - star_lap) + margin_x
+                    b = size - length - margin_y
                     s = gadget_star
-                    s = s.resize((l, l), Image.LANCZOS)
-                    pic.paste(s, (a, b, a + l, b + l), s)
+                    s = s.resize((length, length), Image.LANCZOS)
+                    pic.paste(s, (a, b, a + length, b + length), s)
             else:
                 for i in range(5 if star_slot_verbose else min(self.star, 5)):
-                    a = i * (l - star_lap) + margin_x
-                    b = size - l - margin_y
+                    a = i * (length - star_lap) + margin_x
+                    b = size - length - margin_y
                     s = gadget_star if self.star > i else gadget_star_dis
-                    s = s.resize((l, l), Image.LANCZOS)
-                    pic.paste(s, (a, b, a + l, b + l), s)
+                    s = s.resize((length, length), Image.LANCZOS)
+                    pic.paste(s, (a, b, a + length, b + length), s)
                 if 6 == self.star:
-                    a = 5 * (l - star_lap) + margin_x
-                    b = size - l - margin_y
+                    a = 5 * (length - star_lap) + margin_x
+                    b = size - length - margin_y
                     s = gadget_star_pink
-                    s = s.resize((l, l), Image.LANCZOS)
-                    pic.paste(s, (a, b, a + l, b + l), s)
+                    s = s.resize((length, length), Image.LANCZOS)
+                    pic.paste(s, (a, b, a + length, b + length), s)
         if self.equip:
-            l = round(l * 1.5)
+            length = round(length * 1.5)
             a = margin_x
             b = margin_x
-            s = gadget_equip.resize((l, l), Image.LANCZOS)
-            pic.paste(s, (a, b, a + l, b + l), s)
+            s = gadget_equip.resize((length, length), Image.LANCZOS)
+            pic.paste(s, (a, b, a + length, b + length), s)
         return pic

@@ -8,7 +8,7 @@ from nonebot import on_command
 import pygtrie
 from nonebot.matcher import Matcher
 from nonebot.params import ArgPlainText
-from nonebot.adapters import Event, Bot
+from nonebot.adapters import Event
 from nonebot.typing import T_State
 from async_timeout import timeout
 
@@ -261,7 +261,7 @@ async def _(
                         myname = mapinfo[2]
                         myname = str(myname)[:10]
                         mes = f"{myname}猜对了，真厉害！\n{mesg}TA已经猜对{win_num}次了\n正确答案是:{name}"
-                        chongsheng_num = await POKE.get_chongsheng_num(uid, 150)
+                        # chongsheng_num = await POKE.get_chongsheng_num(uid, 150)
 
                         await POKE.update_chongsheng(uid, 150, 1)
                         mesg_d.append(mes)
