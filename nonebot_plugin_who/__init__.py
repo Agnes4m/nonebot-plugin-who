@@ -2,7 +2,7 @@ from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
 require("nonebot_plugin_alconna")
-
+require("nonebot_plugin_saa")
 from . import __main__ as __main__  # noqa: E402
 
 # from .config import ConfigModel  # noqa: E402
