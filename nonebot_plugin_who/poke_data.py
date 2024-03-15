@@ -1,7 +1,21 @@
-"""角色名称
 
-遵照格式： id: [台服官译简体, 日文原名, 英文名(罗马音), B服官译, 常见别称, 带错别字的别称等] （<-依此顺序）
-若暂无台服官译则用日文原名占位，台日用全角括号，英文用半角括号
+from pathlib import Path
+def get_directories_and_images(path:Path):  
+    p = Path(path)  
+  
+    # 文件夹目录  
+    directories = [str(d) for d in p.glob('*') if d.is_dir()]  
+    # for d in directories:  
+        
+    
+
+    # 图片
+    image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff'}  
+    images = [str(f) for f in p.glob('*') if f.is_file() and f.suffix.lower() in image_extensions]  
+  
+    return directories, images  
+CHARA_NAME = 
+
 """
 CHARA_NAME = {
     1: ['妙蛙种子', 'Bulbasaur'],
@@ -1020,3 +1034,4 @@ CHARA_NAME = {
     1014: ['厄诡椪', 'Ogerpon'],
     1015: ['太乐巴戈斯', 'Terapagos'],
 }
+"""
